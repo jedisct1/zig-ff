@@ -1,3 +1,10 @@
+//! Allocation-free, (best-effort) constant-time, finite field arithmetic for large integers.
+//!
+//! Unlike `std.math.big`, these integers have a fixed maximum length and are only designed to be used for modular arithmetic.
+//! Arithmetic operations are meant to run in constant-time for a given modulus, making them suitable for cryptography.
+//!
+//! Parts of that code was ported from the BSD-licensed crypto/internal/bigmod/nat.go file in the Go language, itself inspired from BearSSL.
+
 const std = @import("std");
 const builtin = std.builtin;
 const crypto = std.crypto;
@@ -97,10 +104,13 @@ pub fn Uint(comptime max_bits: comptime_int) type {
 
         /// Converts a big integer to a primitive type.
         /// This function may not run in constant time.
-        pub fn toPrimitive(self: Self, comptime T: type) T {
+        pub fn toPrimitive(self: Self, comptime T: type) OverflowError!T {
             var x: T = 0;
             var i = self.limbs_count() - 1;
             while (true) : (i -= 1) {
+                if (@bitSizeOf(T) > t_bits and math.shr(T, x, @bitSizeOf(T) - t_bits) != 0) {
+                    return error.Overflow;
+                }
                 x = math.shl(T, x, t_bits);
                 x |= @intCast(T, self.limbs.get(i));
                 if (i == 0) break;
@@ -311,7 +321,7 @@ fn Fe_(comptime bits: comptime_int) type {
 
         /// Converts the field element to a primitive.
         /// This function may not run in constant time.
-        pub fn toPrimitive(self: Self, comptime T: type) T {
+        pub fn toPrimitive(self: Self, comptime T: type) OverflowError!T {
             return self.v.toPrimitive(T);
         }
 
