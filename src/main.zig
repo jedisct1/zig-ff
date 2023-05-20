@@ -316,9 +316,9 @@ fn Fe_(comptime bits: comptime_int) type {
         }
 
         /// Creates a field element from a byte string.
-        pub fn fromBytes(m: Modulus(bits), bytes: []const u8, comptime endian: builtin.Endian) OverflowError!Self {
-            var fe = m.zero;
-            try fe.v.fromBytes(bytes, endian);
+        pub fn fromBytes(m: Modulus(bits), bytes: []const u8, comptime endian: builtin.Endian) (OverflowError || FieldElementError)!Self {
+            const v = try FeUint.fromBytes(bytes, endian);
+            var fe = Self{ .v = v };
             try m.shrink(&fe);
             try m.rejectNonCanonical(fe);
             return fe;
@@ -436,6 +436,17 @@ pub fn Modulus(comptime max_bits: comptime_int) type {
             comptime assert(@bitSizeOf(T) <= max_bits); // Primitive type is larger than the modulus type.
             const v = try FeUint.fromPrimitive(T, x);
             return try Self.fromUint(v);
+        }
+
+        /// Creates a new modulus from a byte string.
+        pub fn fromBytes(bytes: []const u8, comptime endian: builtin.Endian) (InvalidModulusError || OverflowError)!Self {
+            const v = try FeUint.fromBytes(bytes, endian);
+            return try Self.fromUint(v);
+        }
+
+        /// Serializes the modulus to a byte string.
+        pub fn toBytes(self: Self, bytes: []u8, comptime endian: builtin.Endian) OverflowError!void {
+            return self.v.toBytes(bytes, endian);
         }
 
         /// Rejects field elements that are not in the canonical form.
