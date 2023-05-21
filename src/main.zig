@@ -842,12 +842,16 @@ const ct_unprotected = struct {
 };
 
 test {
-    if (builtin.zig_backend == .stage2_c) return error.SkipZigTest;
+    if (@import("builtin").zig_backend == .stage2_c) return error.SkipZigTest;
 
     const M = Modulus(256);
     const m = try M.fromPrimitive(u256, 3429938563481314093726330772853735541133072814650493833233);
     var x = try M.Fe.fromPrimitive(u256, m, 80169837251094269539116136208111827396136208141182357733);
     var y = try M.Fe.fromPrimitive(u256, m, 24620149608466364616251608466389896540098571);
+
+    const x_ = try x.toPrimitive(u256);
+    try testing.expect((try M.Fe.fromPrimitive(@TypeOf(x_), m, x_)).eql(x));
+    try testing.expectError(error.Overflow, x.toPrimitive(u50));
 
     const bits = m.bits();
     try testing.expectEqual(bits, 192);
